@@ -96,12 +96,19 @@ BufferedOutputStream(client.getOutputStream());
    throws IOException {
   /* If you want to use this in a secure environment then you should place some
  restrictions on the requested file name */
-  String fileName = request.getFileName();
-  File file = new File(fileName);
-  // Give them the requested file
-  if(file.exists()) sendFile(outStream,file);
-  else System.out.println("File "+file.getCanonicalPath()+" does not exist.");
+ if (!request.checkBasicAuthentication()){
+    
+    request.sendBasicAuthenticationUnauthorized(outStream);
+    else { 
+      String fileName = request.getFileName();
+      File file = new File(fileName);
+      // Give them the requested file
+      if(file.exists()) sendFile(outStream,file);
+      else System.out.println("File "+file.getCanonicalPath()+" does not exist.");
+    } 
+  }
  }
+
  // A simple HTTP 1.0 response
  void sendFile(BufferedOutputStream out,File file) {
   try {
