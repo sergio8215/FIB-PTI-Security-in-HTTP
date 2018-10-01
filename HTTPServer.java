@@ -94,20 +94,23 @@ BufferedOutputStream(client.getOutputStream());
  // Process an HTTP GET
  void processGetRequest(HTTPRequest request,BufferedOutputStream outStream)
    throws IOException {
-  /* If you want to use this in a secure environment then you should place some
- restrictions on the requested file name */
- if (!request.checkBasicAuthentication()){
-    
-    request.sendBasicAuthenticationUnauthorized(outStream);
+    /* If you want to use this in a secure environment then you should place some
+   restrictions on the requested file name */
+    if (!request.checkBasicAuthentication()){
+        request.sendBasicAuthenticationUnauthorized(outStream);
+    }
     else { 
       String fileName = request.getFileName();
       File file = new File(fileName);
       // Give them the requested file
-      if(file.exists()) sendFile(outStream,file);
-      else System.out.println("File "+file.getCanonicalPath()+" does not exist.");
+      if(file.exists()){
+       sendFile(outStream,file);
+      }else{
+       System.out.println("File "+file.getCanonicalPath()+" does not exist.");
+      }
     } 
   }
- }
+ 
 
  // A simple HTTP 1.0 response
  void sendFile(BufferedOutputStream out,File file) {
@@ -175,7 +178,16 @@ class HTTPInputStream extends FilterInputStream {
 
 // Used to process GET requests
 class HTTPRequest {
- Vector lines = new Vector();
+
+ Vector<String> lines = new Vector<String>();
+
+  public boolean checkBasicAuthentication() {
+    for(String line : (Vector) lines){
+        if(line.equalsIgnoreCase("Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==")) 
+            return true;
+    }
+    return false;
+  } 
 
  public HTTPRequest() {
  }
@@ -185,7 +197,7 @@ class HTTPRequest {
  // Is this a GET or isn't it?
  boolean isGetRequest() {
   if(lines.size() > 0) {
-   String firstLine = (String) lines.elementAt(0);
+   String firstLine = lines.elementAt(0);
    if(firstLine.length() > 0)
     if(firstLine.substring(0,3).equalsIgnoreCase("GET"))
      return true;
@@ -195,7 +207,7 @@ class HTTPRequest {
  // What do they want to get?
  String getFileName() {
   if(lines.size()>0) {
-   String firstLine = (String) lines.elementAt(0);
+   String firstLine =  lines.elementAt(0);
    String fileName = firstLine.substring(firstLine.indexOf(" ")+1);
    int n = fileName.indexOf(" ");
    if(n!=-1) fileName = fileName.substring(0,n);
@@ -212,7 +224,21 @@ class HTTPRequest {
  void log() {
   System.out.println("Received the following request:");
   for(int i=0;i<lines.size();++i)
-   System.out.println((String) lines.elementAt(i));
+   System.out.println( lines.elementAt(i));
  }
+
+  void sendBasicAuthenticationUnauthorized(BufferedOutputStream out) {
+    try {
+     out.write("HTTP/1.1 401 Unauthorized\n".getBytes());
+     out.write("WWW-Authenticate: Basic realm= WallyWorld\n".getBytes());
+     out.write("Content-Type: text/html\r\n\r\n".getBytes());
+     out.flush();
+     out.close();
+     System.out.println("Response sent");
+    }catch(Exception e){
+     e.printStackTrace();
+    }
+  }
+
 }
 
